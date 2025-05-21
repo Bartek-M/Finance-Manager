@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Finance Manager", page_icon="🏦", layout="wide")
+st.set_page_config(page_title="Finance Manager", page_icon="🏦")
 
 CATEGORY_FILE = "categories.json"
 
@@ -21,7 +21,7 @@ if os.path.exists(CATEGORY_FILE):
 
 def save_categories():
     with open(CATEGORY_FILE, "w") as f:
-        json.dump(st.session_state.categories, f)
+        json.dump(st.session_state.categories, f, indent=2)
 
 
 def categorize_transactions(df):
@@ -54,7 +54,7 @@ def load_transactions(file):
         return None
 
 
-def add_keyword_to_cateogory(category, keyword):
+def add_keyword_to_category(category, keyword):
     keyword = keyword.strip()
     if not keyword or keyword in st.session_state.categories[category]:
         return False
@@ -62,6 +62,17 @@ def add_keyword_to_cateogory(category, keyword):
     st.session_state.categories[category].append(keyword)
     save_categories()
     return True
+
+
+def remove_keyword_from_category(category, keyword):
+    keyword = keyword.strip().lower()
+    keywords = st.session_state.categories.get(category, [])
+
+    updated_keywords = [kw for kw in keywords if kw.strip().lower() != keyword]
+
+    if len(updated_keywords) != len(keywords):
+        st.session_state.categories[category] = updated_keywords
+        save_categories()
 
 
 def main():
@@ -95,23 +106,67 @@ def main():
         edited_df = st.data_editor(
             st.session_state.debits_df[["Date", "Details", "Amount", "Category"]],
             column_config={
-                "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
-                "Amount": st.column_config.NumberColumn("Amount", format="%.2f AED"),
+                "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY", disabled=True),
+                "Details": st.column_config.TextColumn("Details", disabled=True),
+                "Amount": st.column_config.NumberColumn("Amount", format="%.2f AED", disabled=True),
                 "Category": st.column_config.SelectboxColumn(
                     "Category",
-                    options=list(st.session_state.categories.keys())
+                    options=sorted(list(st.session_state.categories.keys())),
                 )
             },
             hide_index=True,
             use_container_width=True,
-            key="category_editor"            
+            key="category_editor"
         )
-        save_button = st.button("Apply Changes", type="primary")
-        if save_button:
-            pass
+        
+        for idx, row in edited_df.iterrows():
+            new_category = row["Category"]
+            last_category = st.session_state.debits_df.at[idx, "Category"]
+            if new_category == last_category:
+                continue
+            
+            details = row["Details"]
+            remove_keyword_from_category(last_category, details)
+            st.session_state.debits_df.at[idx, "Category"] = new_category
+            result = add_keyword_to_category(new_category, details)
+            
+            if result:
+                st.rerun()        
+
+        st.subheader("Expense Summary")
+        category_totals = st.session_state.debits_df.groupby("Category")["Amount"].sum().reset_index()
+        category_totals = category_totals.sort_values("Amount", ascending=False)
+
+        st.dataframe(
+            category_totals,
+            column_config={
+                "Amount": st.column_config.NumberColumn("Amount", format="%.2f AED")
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+
+        fig = px.pie(
+            category_totals,
+            values="Amount",
+            names="Category",
+            title="Expenses by Category"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
-        st.write(credits_df)
+        st.subheader("Payments Summary")
+        total_payments = credits_df["Amount"].sum()
+        st.metric("Total Payments", f"{total_payments:,.2f} AED")
+        st.dataframe(
+            credits_df[["Date", "Details", "Amount", "Status"]],
+            column_config={
+                "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+                "Amount": st.column_config.NumberColumn("Amount", format="%.2f AED")
+            },
+            use_container_width=True,
+            hide_index=True
+        )
 
 
 if __name__ == "__main__":
