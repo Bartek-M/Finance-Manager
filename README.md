@@ -4,6 +4,8 @@ File Manager website made with **TechWithTim** tutorial using **Python** and **S
 
 https://www.youtube.com/watch?v=wqBlmAWqa6A
 
+## GitAds Sponsored
+[![Sponsored by GitAds](https://gitads.dev/v1/ad-serve?source=bartek-m/finance-manager@github)](https://gitads.dev/v1/ad-track?source=bartek-m/finance-manager@github)
 
 ## Setup
 
