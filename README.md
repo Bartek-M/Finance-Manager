@@ -11,3 +11,5 @@ https://www.youtube.com/watch?v=wqBlmAWqa6A
 pip install -r requirements.txt
 streamlit run main.py
 ```
+
+<!-- GitAds-Verify: LY7CUMTM5D5OUW463YSQSR54XOH44XBJ -->
